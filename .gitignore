@@ -80,3 +80,108 @@ Thumbs.db
 *.db
 *.sqlite
 *.sqlite3
+
+# ====================
+# .NET / ASP.NET Core
+# ====================
+
+# Build results
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+bld/
+
+# Visual Studio files
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# NuGet packages
+*.nupkg
+**/packages/
+!**/packages/build/
+packages.config
+
+# MSTest test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.tmp.txt
+
+# Files built by Visual Studio
+*_i.c
+*_p.c
+*_i.h
+*.ilk
+*.meta
+*.obj
+*.iobj
+*.pch
+*.pdb
+*.ipdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp_proj
+*_wpftmp.csproj
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
+
+# ASP.NET Core appsettings
+appsettings.Development.json
+appsettings.Production.json
+secrets.json
+
+# SSL certificates
+*.pfx
+*.p12
+*.key
+*.crt
+*.pem
+
+# TypeScript build info
+*.tsbuildinfo
+
+# ====================
+# Additional React/Node
+# ====================
+
+# Package manager lock files (optional - uncomment if you want to ignore them)
+# frontend/package-lock.json
+# frontend/yarn.lock
+
+# Coverage reports
+frontend/coverage/
+
+# ESLint cache
+frontend/.eslintcache
+
+# ====================
+# Claude Code specific
+# ====================
+
+# Claude configuration
+.claude/
+*.claude

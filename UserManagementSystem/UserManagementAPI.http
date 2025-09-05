@@ -1,0 +1,87 @@
+@baseUrl = http://localhost:5245
+
+### Health Check
+GET {{baseUrl}}/
+Accept: application/json
+
+### === AUTHENTICATION ENDPOINTS ===
+
+### 1. Fast Login - Admin
+POST {{baseUrl}}/api/auth/fast-login
+Content-Type: application/json
+
+{
+    "userType": "admin"
+}
+
+### 2. Fast Login - User
+POST {{baseUrl}}/api/auth/fast-login
+Content-Type: application/json
+
+{
+    "userType": "user"
+}
+
+### 3. Login - Admin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+    "username": "admin",
+    "password": "admin123"
+}
+
+### 4. Login - User
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+    "username": "user",
+    "password": "user123"
+}
+
+### 5. Register New User
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+    "username": "newuser",
+    "email": "newuser@example.com",
+    "password": "password123",
+    "role": "User"
+}
+
+### 6. Verify Token (ใส่ token ที่ได้จาก login)
+GET {{baseUrl}}/api/auth/verify
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+### === USER MANAGEMENT ENDPOINTS ===
+
+### 7. Get All Users (Admin only)
+GET {{baseUrl}}/api/users
+Authorization: Bearer YOUR_ADMIN_TOKEN_HERE
+
+### 8. Get User Profile
+GET {{baseUrl}}/api/users/profile
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### 9. Get User by ID
+GET {{baseUrl}}/api/users/1
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### 10. Update User
+PUT {{baseUrl}}/api/users/1
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+    "username": "updatedusername",
+    "email": "updated@example.com",
+    "password": "newpassword123"
+}
+
+### 11. Delete User (Admin only)
+DELETE {{baseUrl}}/api/users/2
+Authorization: Bearer YOUR_ADMIN_TOKEN_HERE
+
+###

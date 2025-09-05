@@ -13,8 +13,8 @@ const ClaudeTranslator = () => {
   const [copied, setCopied] = useState(false);
   const [languages, setLanguages] = useState([]);
 
-  // API base URL
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+  // API base URL for translation service
+  const API_BASE_URL = process.env.REACT_APP_TRANSLATE_API_URL || 'http://localhost:5000/api';
 
   // Load available languages on component mount
   useEffect(() => {
