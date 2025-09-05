@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ArrowRightLeft, Loader2, Languages, Copy, Check } from 'lucide-react';
-import axios from 'axios';
 
 const ClaudeTranslator = () => {
   const [sourceText, setSourceText] = useState('');
@@ -11,38 +10,19 @@ const ClaudeTranslator = () => {
   const [error, setError] = useState('');
   const [confidence, setConfidence] = useState('');
   const [copied, setCopied] = useState(false);
-  const [languages, setLanguages] = useState([]);
 
-  // API base URL for translation service
-  const API_BASE_URL = process.env.REACT_APP_TRANSLATE_API_URL || 'http://localhost:5000/api';
-
-  // Load available languages on component mount
-  useEffect(() => {
-    const loadLanguages = async () => {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/languages`);
-        setLanguages(response.data.languages);
-      } catch (err) {
-        console.error('Failed to load languages:', err);
-        // Fallback to default languages if API fails
-        setLanguages([
-          'English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese', 
-          'Russian', 'Chinese', 'Japanese', 'Korean', 'Arabic', 'Hindi',
-          'Dutch', 'Swedish', 'Norwegian', 'Danish', 'Finnish', 'Polish',
-          'Turkish', 'Greek', 'Hebrew', 'Thai', 'Vietnamese', 'Indonesian'
-        ]);
-      }
-    };
-
-    loadLanguages();
-  }, [API_BASE_URL]);
+  const languages = [
+    'English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese', 
+    'Russian', 'Chinese', 'Japanese', 'Korean', 'Arabic', 'Hindi',
+    'Dutch', 'Swedish', 'Norwegian', 'Danish', 'Finnish', 'Polish',
+    'Turkish', 'Greek', 'Hebrew', 'Thai', 'Vietnamese', 'Indonesian'
+  ];
 
   const swapLanguages = () => {
     setSourceLang(targetLang);
     setTargetLang(sourceLang);
     setSourceText(translatedText);
     setTranslatedText('');
-    setConfidence('');
   };
 
   const copyToClipboard = async () => {
@@ -64,26 +44,34 @@ const ClaudeTranslator = () => {
     setIsLoading(true);
     setError('');
     setTranslatedText('');
-    setConfidence('');
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/translate`, {
-        sourceText: sourceText,
-        sourceLang: sourceLang,
-        targetLang: targetLang
+      const response = await fetch('http://127.0.0.1:5000/api/translate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sourceText: sourceText,
+          sourceLang: sourceLang,
+          targetLang: targetLang
+        })
       });
 
-      const result = response.data;
-      setTranslatedText(result.translatedText);
-      setConfidence(result.confidence);
-    } catch (err) {
-      if (err.response) {
-        setError(err.response.data.error || 'Translation failed. Please try again.');
-      } else if (err.request) {
-        setError('Cannot connect to translation service. Please check if the backend is running.');
-      } else {
-        setError('Translation failed. Please try again.');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+
+      const result = await response.json();
+      
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setTranslatedText(result.translatedText);
+        setConfidence(result.confidence);
+      }
+    } catch (err) {
+      setError('Translation failed. Please check if the backend server is running.');
       console.error('Translation error:', err);
     } finally {
       setIsLoading(false);
