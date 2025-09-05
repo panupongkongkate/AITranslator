@@ -17,7 +17,6 @@ namespace UserManagementAPI.Models
         [StringLength(100, MinimumLength = 6)]
         public string Password { get; set; } = string.Empty;
 
-        [StringLength(20)]
-        public string Role { get; set; } = "User";
+        public int RoleId { get; set; } = 2; // Default to User role (Id = 2)
     }
 }

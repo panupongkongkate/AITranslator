@@ -35,7 +35,7 @@ namespace UserManagementAPI.Services
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.Username),
                 new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Role, user.Role),
+                new Claim(ClaimTypes.Role, user.Role.Name),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
             };
@@ -65,6 +65,7 @@ namespace UserManagementAPI.Services
         {
             // Try to find user by username first, then by email
             var user = await _context.Users
+                .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.Username == username || u.Email == username);
 
             if (user == null || !VerifyPassword(password, user.Password))
@@ -89,18 +90,28 @@ namespace UserManagementAPI.Services
                 throw new InvalidOperationException("Email already exists");
             }
 
+            // Validate RoleId exists
+            var roleExists = await _context.Roles.AnyAsync(r => r.Id == request.RoleId);
+            if (!roleExists)
+            {
+                throw new InvalidOperationException("Invalid role specified");
+            }
+
             var user = new User
             {
                 Username = request.Username,
                 Email = request.Email,
                 Password = HashPassword(request.Password),
-                Role = request.Role,
+                RoleId = request.RoleId,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
+
+            // Reload with Role included
+            await _context.Entry(user).Reference(u => u.Role).LoadAsync();
 
             return user;
         }

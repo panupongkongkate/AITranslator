@@ -39,9 +39,11 @@ export const authAPI = {
 
 // User management API calls - using UserManagementSystem
 export const userAPI = {
-  // Get all users (Admin only)
-  getAllUsers: () =>
-    userAPI_instance.get('/users'),
+  // Get all users (Admin only) with pagination
+  getAllUsers: (page = 1, pageSize = 10, search = '') =>
+    userAPI_instance.get('/users', {
+      params: { page, pageSize, search: search || undefined }
+    }),
 
   // Get user by ID
   getUserById: (id) =>
@@ -74,7 +76,17 @@ export const userAPI = {
 
   // Change password
   changePassword: (oldPassword, newPassword, userId) =>
-    userAPI_instance.put(`/users/${userId}`, { Password: newPassword }),
+    userAPI_instance.put(`/users/${userId}`, { 
+      OldPassword: oldPassword, 
+      Password: newPassword 
+    }),
+};
+
+// Role API calls - using UserManagementSystem
+export const roleAPI = {
+  // Get all roles
+  getAllRoles: () =>
+    userAPI_instance.get('/roles'),
 };
 
 // Translation API calls - using Backend

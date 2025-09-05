@@ -12,7 +12,7 @@ builder.Services.AddControllers();
 
 // Add Entity Framework
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Add Authentication Service
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -98,12 +98,7 @@ builder.Services.AddLogging();
 
 var app = builder.Build();
 
-// Ensure database is created and seeded
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    context.Database.EnsureCreated();
-}
+// Database First approach - no automatic database creation
 
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())

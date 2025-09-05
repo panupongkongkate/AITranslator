@@ -10,75 +10,51 @@ namespace UserManagementAPI.Data
         }
 
         public DbSet<User> Users { get; set; }
+        public DbSet<Role> Roles { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Configure User entity
+            // Database First approach - configure to match existing SQL Server schema
+            
+            // Configure Users table
             modelBuilder.Entity<User>(entity =>
             {
+                entity.ToTable("Users");
                 entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).ValueGeneratedOnAdd();
+                entity.Property(e => e.Username).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.Email).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.Password).IsRequired();
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(e => e.UpdatedAt).HasDefaultValueSql("GETUTCDATE()");
+                
+                // Indexes
                 entity.HasIndex(e => e.Username).IsUnique();
                 entity.HasIndex(e => e.Email).IsUnique();
+                entity.HasIndex(e => e.RoleId);
                 
-                entity.Property(e => e.Username)
-                    .IsRequired()
-                    .HasMaxLength(50);
-                
-                entity.Property(e => e.Email)
-                    .IsRequired()
-                    .HasMaxLength(100);
-                
-                entity.Property(e => e.Password)
-                    .IsRequired();
-                
-                entity.Property(e => e.Role)
-                    .IsRequired()
-                    .HasMaxLength(20)
-                    .HasDefaultValue("User");
-                
-                entity.Property(e => e.CreatedAt)
-                    .IsRequired()
-                    .HasDefaultValueSql("datetime('now')");
-                
-                entity.Property(e => e.UpdatedAt)
-                    .IsRequired()
-                    .HasDefaultValueSql("datetime('now')");
+                // Relationships
+                entity.HasOne(e => e.Role)
+                    .WithMany(r => r.Users)
+                    .HasForeignKey(e => e.RoleId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
-
-            // Seed default users
-            SeedData(modelBuilder);
-        }
-
-        private void SeedData(ModelBuilder modelBuilder)
-        {
-            // Hash passwords using BCrypt
-            string adminPasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123");
-            string userPasswordHash = BCrypt.Net.BCrypt.HashPassword("user123");
-
-            modelBuilder.Entity<User>().HasData(
-                new User
-                {
-                    Id = 1,
-                    Username = "admin",
-                    Email = "admin@example.com",
-                    Password = adminPasswordHash,
-                    Role = "Admin",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                },
-                new User
-                {
-                    Id = 2,
-                    Username = "user",
-                    Email = "user@example.com",
-                    Password = userPasswordHash,
-                    Role = "User",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                }
-            );
+            
+            // Configure Roles table
+            modelBuilder.Entity<Role>(entity =>
+            {
+                entity.ToTable("Roles");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).ValueGeneratedOnAdd();
+                entity.Property(e => e.Name).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.Description).HasMaxLength(200);
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+                
+                // Indexes
+                entity.HasIndex(e => e.Name).IsUnique();
+            });
         }
     }
 }

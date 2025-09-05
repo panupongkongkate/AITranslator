@@ -198,7 +198,7 @@ const UserProfile = () => {
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full">
-              {user?.role === 'Admin' ? (
+              {user?.role?.name === 'Admin' ? (
                 <Crown className="w-6 h-6 text-white" />
               ) : (
                 <UserCircle className="w-6 h-6 text-white" />
@@ -268,14 +268,14 @@ const UserProfile = () => {
                   {/* Current User Info */}
                   <div className="bg-gray-50 rounded-lg p-4 mb-6">
                     <div className="flex items-center gap-3">
-                      {user?.role === 'Admin' ? (
+                      {user?.role?.name === 'Admin' ? (
                         <Crown className="w-8 h-8 text-yellow-600" />
                       ) : (
                         <UserCircle className="w-8 h-8 text-gray-600" />
                       )}
                       <div>
                         <p className="font-medium text-gray-800">{user?.username}</p>
-                        <p className="text-sm text-gray-500">{user?.role}</p>
+                        <p className="text-sm text-gray-500">{user?.role?.name || user?.role}</p>
                       </div>
                     </div>
                   </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { roleAPI, handleAPIError } from '../services/api';
 import { Eye, EyeOff, Mail, Lock, User, UserPlus, Loader2, AlertCircle } from 'lucide-react';
 
 const Register = ({ onToggleForm }) => {
@@ -13,9 +14,18 @@ const Register = ({ onToggleForm }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formErrors, setFormErrors] = useState({});
+  const [roles, setRoles] = useState([]);
+  const [rolesLoading, setRolesLoading] = useState(true);
+  const [successMessage, setSuccessMessage] = useState('');
   
   const { register, isLoading, error, clearError } = useAuth();
 
+  // Load roles on component mount
+  useEffect(() => {
+    fetchRoles();
+  }, []);
+
+  // Clear error after 5 seconds
   useEffect(() => {
     if (error) {
       const timer = setTimeout(() => {
@@ -24,6 +34,24 @@ const Register = ({ onToggleForm }) => {
       return () => clearTimeout(timer);
     }
   }, [error, clearError]);
+
+  const fetchRoles = async () => {
+    try {
+      setRolesLoading(true);
+      const response = await roleAPI.getAllRoles();
+      // Filter to only User role for registration
+      const userRole = (response.data || []).find(role => role.name === 'User');
+      setRoles(userRole ? [userRole] : []);
+    } catch (err) {
+      console.error('Error fetching roles:', handleAPIError(err));
+      // Fallback to User role only
+      setRoles([
+        { id: 2, name: 'User', description: 'Regular User' }
+      ]);
+    } finally {
+      setRolesLoading(false);
+    }
+  };
 
   const validateForm = () => {
     const errors = {};
@@ -100,9 +128,23 @@ const Register = ({ onToggleForm }) => {
       formData.role
     );
     
-    if (!result.success) {
-      // Error is handled by AuthContext
-      console.log('Registration failed');
+    if (result.success) {
+      // Clear form and show success message
+      setFormData({
+        username: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        role: 'User',
+      });
+      setFormErrors({});
+      setSuccessMessage('สมัครสมาชิกสำเร็จ! กำลังไปหน้า Login...');
+      
+      // Show success message and switch to login form
+      setTimeout(() => {
+        setSuccessMessage('');
+        onToggleForm();
+      }, 2000);
     }
   };
 
@@ -118,6 +160,18 @@ const Register = ({ onToggleForm }) => {
             <h2 className="text-3xl font-bold text-gray-800 mb-2">สมัครสมาชิก</h2>
             <p className="text-gray-600">เริ่มต้นใช้งานระบบแปลภาษา</p>
           </div>
+
+          {/* Success Message */}
+          {successMessage && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl flex items-start gap-3 fade-in">
+              <div className="w-5 h-5 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+              <p className="text-green-700 text-sm">{successMessage}</p>
+            </div>
+          )}
 
           {/* Error Message */}
           {error && (
@@ -185,22 +239,12 @@ const Register = ({ onToggleForm }) => {
               )}
             </div>
 
-            {/* Role Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                บทบาท
-              </label>
-              <select
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
-                className="block w-full px-3 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:border-purple-500 focus:ring-purple-200 transition-colors"
-                disabled={isLoading}
-              >
-                <option value="User">ผู้ใช้งานทั่วไป</option>
-                <option value="Admin">ผู้ดูแลระบบ</option>
-              </select>
-            </div>
+            {/* Role Selection - Hidden, always User */}
+            <input
+              type="hidden"
+              name="role"
+              value="User"
+            />
 
             {/* Password Field */}
             <div>

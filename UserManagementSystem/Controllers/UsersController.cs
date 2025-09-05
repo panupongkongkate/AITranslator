@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using UserManagementAPI.Data;
 using UserManagementAPI.Models;
+using UserManagementAPI.Models.DTOs;
 using UserManagementAPI.Services;
 
 namespace UserManagementAPI.Controllers
@@ -27,23 +28,68 @@ namespace UserManagementAPI.Controllers
         // GET: api/users - Admin only
         [HttpGet]
         [Authorize(Roles = "Admin")]
-        public async Task<ActionResult<IEnumerable<object>>> GetUsers()
+        public async Task<ActionResult<object>> GetUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = null)
         {
             try
             {
-                var users = await _context.Users
-                    .Select(u => new
+                // Validate parameters
+                if (page < 1) page = 1;
+                if (pageSize < 1 || pageSize > 100) pageSize = 10; // Max 100 items per page
+
+                var query = _context.Users.AsQueryable();
+
+                // Apply search filter if provided
+                if (!string.IsNullOrEmpty(search))
+                {
+                    var searchLower = search.ToLower();
+                    query = query.Where(u => 
+                        u.Username.ToLower().Contains(searchLower) ||
+                        u.Email.ToLower().Contains(searchLower) ||
+                        u.Role.Name.ToLower().Contains(searchLower)
+                    );
+                }
+
+                // Get total count before pagination
+                var totalCount = await query.CountAsync();
+                var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+                // Apply pagination with Role included
+                var users = await query
+                    .Include(u => u.Role)
+                    .OrderBy(u => u.Id) // Consistent ordering
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(u => new UserDto
                     {
-                        u.Id,
-                        u.Username,
-                        u.Email,
-                        u.Role,
-                        u.CreatedAt,
-                        u.UpdatedAt
+                        Id = u.Id,
+                        Username = u.Username,
+                        Email = u.Email,
+                        Role = new RoleDto 
+                        {
+                            Id = u.Role.Id,
+                            Name = u.Role.Name,
+                            Description = u.Role.Description
+                        },
+                        CreatedAt = u.CreatedAt,
+                        UpdatedAt = u.UpdatedAt
                     })
                     .ToListAsync();
 
-                return Ok(users);
+                var response = new
+                {
+                    users = users,
+                    pagination = new
+                    {
+                        currentPage = page,
+                        pageSize = pageSize,
+                        totalCount = totalCount,
+                        totalPages = totalPages,
+                        hasNextPage = page < totalPages,
+                        hasPreviousPage = page > 1
+                    }
+                };
+
+                return Ok(response);
             }
             catch (Exception ex)
             {
@@ -67,21 +113,28 @@ namespace UserManagementAPI.Controllers
                     return Forbid();
                 }
 
-                var user = await _context.Users.FindAsync(id);
+                var user = await _context.Users
+                    .Include(u => u.Role)
+                    .FirstOrDefaultAsync(u => u.Id == id);
                 
                 if (user == null)
                 {
                     return NotFound();
                 }
 
-                var userResponse = new
+                var userResponse = new UserDto
                 {
-                    user.Id,
-                    user.Username,
-                    user.Email,
-                    user.Role,
-                    user.CreatedAt,
-                    user.UpdatedAt
+                    Id = user.Id,
+                    Username = user.Username,
+                    Email = user.Email,
+                    Role = new RoleDto 
+                    {
+                        Id = user.Role.Id,
+                        Name = user.Role.Name,
+                        Description = user.Role.Description
+                    },
+                    CreatedAt = user.CreatedAt,
+                    UpdatedAt = user.UpdatedAt
                 };
 
                 return Ok(userResponse);
@@ -165,13 +218,34 @@ namespace UserManagementAPI.Controllers
                 // Update password if provided
                 if (!string.IsNullOrEmpty(request.Password))
                 {
+                    // For password changes, verify old password if provided
+                    if (!string.IsNullOrEmpty(request.OldPassword))
+                    {
+                        // Verify old password
+                        if (!_authService.VerifyPassword(request.OldPassword, user.Password))
+                        {
+                            return BadRequest(new { message = "Current password is incorrect" });
+                        }
+                    }
+                    // If no old password provided and it's not their own profile, only admin can change
+                    else if (currentUserId != id && currentUserRole != "Admin")
+                    {
+                        return BadRequest(new { message = "Old password is required to change password" });
+                    }
+                    
                     user.Password = _authService.HashPassword(request.Password);
                 }
 
                 // Only admins can change roles
-                if (!string.IsNullOrEmpty(request.Role) && currentUserRole == "Admin")
+                if (request.RoleId != 0 && currentUserRole == "Admin")
                 {
-                    user.Role = request.Role;
+                    // Validate RoleId exists
+                    var roleExists = await _context.Roles.AnyAsync(r => r.Id == request.RoleId);
+                    if (!roleExists)
+                    {
+                        return BadRequest(new { message = "Invalid role specified" });
+                    }
+                    user.RoleId = request.RoleId;
                 }
 
                 user.UpdatedAt = DateTime.UtcNow;
@@ -236,21 +310,28 @@ namespace UserManagementAPI.Controllers
             {
                 var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
                 
-                var user = await _context.Users.FindAsync(currentUserId);
+                var user = await _context.Users
+                    .Include(u => u.Role)
+                    .FirstOrDefaultAsync(u => u.Id == currentUserId);
                 
                 if (user == null)
                 {
                     return NotFound();
                 }
 
-                var userResponse = new
+                var userResponse = new UserDto
                 {
-                    user.Id,
-                    user.Username,
-                    user.Email,
-                    user.Role,
-                    user.CreatedAt,
-                    user.UpdatedAt
+                    Id = user.Id,
+                    Username = user.Username,
+                    Email = user.Email,
+                    Role = new RoleDto 
+                    {
+                        Id = user.Role.Id,
+                        Name = user.Role.Name,
+                        Description = user.Role.Description
+                    },
+                    CreatedAt = user.CreatedAt,
+                    UpdatedAt = user.UpdatedAt
                 };
 
                 return Ok(userResponse);
@@ -268,6 +349,7 @@ namespace UserManagementAPI.Controllers
         public string? Username { get; set; }
         public string? Email { get; set; }
         public string? Password { get; set; }
-        public string? Role { get; set; }
+        public string? OldPassword { get; set; }
+        public int RoleId { get; set; } = 0;
     }
 }

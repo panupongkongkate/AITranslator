@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { userAPI, handleAPIError } from '../services/api';
+import { userAPI, roleAPI, handleAPIError } from '../services/api';
 import {
   Users,
   Plus,
@@ -14,7 +14,9 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle,
-  X
+  X,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 const UserList = () => {
@@ -29,28 +31,75 @@ const UserList = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState({});
+  const [roles, setRoles] = useState([]);
+  const [rolesLoading, setRolesLoading] = useState(true);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    pageSize: 5,
+    totalCount: 0,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPreviousPage: false
+  });
 
   const [newUser, setNewUser] = useState({
     username: '',
     email: '',
     password: '',
+    confirmPassword: '',
     role: 'User'
   });
 
   useEffect(() => {
     fetchUsers();
+    fetchRoles();
+  }, [currentPage, pageSize]);
+
+  useEffect(() => {
+    fetchRoles();
   }, []);
+
+  useEffect(() => {
+    // Reset to page 1 when search term changes
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    } else {
+      fetchUsers();
+    }
+  }, [searchTerm]);
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await userAPI.getAllUsers();
-      setUsers(response.data.users || response.data);
+      const response = await userAPI.getAllUsers(currentPage, pageSize, searchTerm);
+      setUsers(response.data.users || []);
+      setPagination(response.data.pagination || {});
       setError(null);
     } catch (err) {
       setError(handleAPIError(err));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchRoles = async () => {
+    try {
+      setRolesLoading(true);
+      const response = await roleAPI.getAllRoles();
+      setRoles(response.data || []);
+    } catch (err) {
+      console.error('Error fetching roles:', handleAPIError(err));
+      // Fallback to default roles if API fails
+      setRoles([
+        { id: 1, name: 'Admin', description: 'System Administrator' },
+        { id: 2, name: 'User', description: 'Regular User' }
+      ]);
+    } finally {
+      setRolesLoading(false);
     }
   };
 
@@ -77,6 +126,12 @@ const UserList = () => {
       errors.password = 'กรุณากรอกรหัสผ่าน';
     } else if (newUser.password.length < 6) {
       errors.password = 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
+    }
+    
+    if (!newUser.confirmPassword.trim()) {
+      errors.confirmPassword = 'กรุณายืนยันรหัสผ่าน';
+    } else if (newUser.password !== newUser.confirmPassword) {
+      errors.confirmPassword = 'รหัสผ่านไม่ตรงกัน';
     }
     
     if (!newUser.role) {
@@ -126,7 +181,7 @@ const UserList = () => {
     try {
       await userAPI.createUser(newUser);
       setShowAddModal(false);
-      setNewUser({ username: '', email: '', password: '', role: 'User' });
+      setNewUser({ username: '', email: '', password: '', confirmPassword: '', role: 'User' });
       setFormErrors({});
       fetchUsers();
     } catch (err) {
@@ -150,7 +205,7 @@ const UserList = () => {
       await userAPI.updateUser(selectedUser.id, {
         Username: selectedUser.username,
         Email: selectedUser.email,
-        Role: selectedUser.role
+        Role: selectedUser.role?.name || selectedUser.role
       });
       setShowEditModal(false);
       setSelectedUser(null);
@@ -196,13 +251,45 @@ const UserList = () => {
     }
   };
 
-  const filteredUsers = users.filter(user =>
-    user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.role?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Pagination handlers
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= pagination.totalPages) {
+      setCurrentPage(page);
+    }
+  };
 
-  if (user?.role !== 'Admin') {
+  const handlePageSizeChange = (newPageSize) => {
+    setPageSize(newPageSize);
+    setCurrentPage(1); // Reset to first page when changing page size
+  };
+
+  const generatePageNumbers = () => {
+    const { currentPage, totalPages } = pagination;
+    const pages = [];
+    
+    if (totalPages <= 7) {
+      // Show all pages if total is 7 or less
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Show smart pagination
+      if (currentPage <= 4) {
+        // Show first 5 pages + ... + last page
+        pages.push(...[1, 2, 3, 4, 5, '...', totalPages]);
+      } else if (currentPage >= totalPages - 3) {
+        // Show first page + ... + last 5 pages
+        pages.push(...[1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages]);
+      } else {
+        // Show first page + ... + current-1, current, current+1 + ... + last page
+        pages.push(...[1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages]);
+      }
+    }
+    
+    return pages;
+  };
+
+  if (user?.role?.name !== 'Admin') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -265,22 +352,41 @@ const UserList = () => {
 
         {/* Controls */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-            {/* Search */}
-            <div className="relative flex-1 max-w-md">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-gray-400" />
+          <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+            {/* Left side - Search and Page Size */}
+            <div className="flex flex-col sm:flex-row gap-4 items-center">
+              {/* Search */}
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="ค้นหาผู้ใช้..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-w-[250px]"
+                />
               </div>
-              <input
-                type="text"
-                placeholder="ค้นหาผู้ใช้..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-              />
+
+              {/* Page Size Selector */}
+              <div className="flex items-center gap-2 text-sm">
+                <label className="text-gray-700 whitespace-nowrap">แสดง:</label>
+                <select
+                  value={pageSize}
+                  onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                  className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+                <span className="text-gray-700 whitespace-nowrap">รายการ</span>
+              </div>
             </div>
 
-            {/* Add User Button */}
+            {/* Right side - Add User Button */}
             <button
               onClick={() => setShowAddModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105 shadow-lg"
@@ -297,7 +403,7 @@ const UserList = () => {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
             </div>
-          ) : filteredUsers.length === 0 ? (
+          ) : users.length === 0 ? (
             <div className="text-center py-12">
               <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-500">ไม่พบผู้ใช้</p>
@@ -325,11 +431,11 @@ const UserList = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredUsers.map((user) => (
+                  {users.map((user) => (
                     <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          {user.role === 'Admin' ? (
+                          {user.role?.name === 'Admin' ? (
                             <Crown className="w-8 h-8 text-yellow-600 mr-3" />
                           ) : (
                             <UserCircle className="w-8 h-8 text-gray-600 mr-3" />
@@ -349,11 +455,11 @@ const UserList = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          user.role === 'Admin'
+                          user.role?.name === 'Admin'
                             ? 'bg-yellow-100 text-yellow-800'
                             : 'bg-green-100 text-green-800'
                         }`}>
-                          {user.role}
+                          {user.role?.name || user.role}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -402,6 +508,71 @@ const UserList = () => {
             </div>
           )}
         </div>
+
+        {/* Pagination */}
+        {!loading && users.length > 0 && pagination.totalPages > 1 && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-6 py-4 mt-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              {/* Results Info */}
+              <div className="text-sm text-gray-700">
+                แสดง {((pagination.currentPage - 1) * pagination.pageSize) + 1}-
+                {Math.min(pagination.currentPage * pagination.pageSize, pagination.totalCount)} 
+                {' '}จาก {pagination.totalCount} รายการ
+              </div>
+
+              {/* Pagination Controls */}
+              <div className="flex items-center gap-2">
+                {/* Previous Button */}
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  disabled={!pagination.hasPreviousPage}
+                  className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm transition-colors ${
+                    pagination.hasPreviousPage
+                      ? 'text-gray-700 bg-gray-100 hover:bg-gray-200'
+                      : 'text-gray-400 bg-gray-50 cursor-not-allowed'
+                  }`}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  ก่อนหน้า
+                </button>
+
+                {/* Page Numbers */}
+                <div className="flex items-center gap-1">
+                  {generatePageNumbers().map((page, index) => (
+                    <button
+                      key={index}
+                      onClick={() => typeof page === 'number' ? handlePageChange(page) : null}
+                      disabled={typeof page !== 'number'}
+                      className={`min-w-[40px] h-10 rounded-lg text-sm transition-colors ${
+                        page === pagination.currentPage
+                          ? 'bg-purple-600 text-white'
+                          : typeof page === 'number'
+                          ? 'text-gray-700 bg-gray-100 hover:bg-gray-200'
+                          : 'text-gray-400 cursor-default'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Next Button */}
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  disabled={!pagination.hasNextPage}
+                  className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm transition-colors ${
+                    pagination.hasNextPage
+                      ? 'text-gray-700 bg-gray-100 hover:bg-gray-200'
+                      : 'text-gray-400 bg-gray-50 cursor-not-allowed'
+                  }`}
+                >
+                  ถัดไป
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Add User Modal */}
@@ -469,6 +640,25 @@ const UserList = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  ยืนยันรหัสผ่าน <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  value={newUser.confirmPassword}
+                  onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors ${
+                    formErrors.confirmPassword
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                      : 'border-gray-300 focus:ring-purple-500'
+                  }`}
+                  placeholder="ยืนยันรหัสผ่าน"
+                />
+                {formErrors.confirmPassword && (
+                  <p className="mt-1 text-sm text-red-600">{formErrors.confirmPassword}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   บทบาท <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -479,9 +669,17 @@ const UserList = () => {
                       ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
                       : 'border-gray-300 focus:ring-purple-500'
                   }`}
+                  disabled={rolesLoading}
                 >
-                  <option value="User">User</option>
-                  <option value="Admin">Admin</option>
+                  {rolesLoading ? (
+                    <option value="">กำลังโหลด...</option>
+                  ) : (
+                    roles.map((role) => (
+                      <option key={role.id} value={role.name}>
+                        {role.name}
+                      </option>
+                    ))
+                  )}
                 </select>
                 {formErrors.role && (
                   <p className="mt-1 text-sm text-red-600">{formErrors.role}</p>
@@ -492,7 +690,7 @@ const UserList = () => {
                   type="button"
                   onClick={() => {
                     setShowAddModal(false);
-                    setNewUser({ username: '', email: '', password: '', role: 'User' });
+                    setNewUser({ username: '', email: '', password: '', confirmPassword: '', role: 'User' });
                     setFormErrors({});
                   }}
                   className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
@@ -562,16 +760,24 @@ const UserList = () => {
                   บทบาท <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={selectedUser.role}
+                  value={selectedUser.role?.name || selectedUser.role}
                   onChange={(e) => handleInputChange('role', e.target.value, true)}
                   className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors ${
                     formErrors.role
                       ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
                       : 'border-gray-300 focus:ring-purple-500'
                   }`}
+                  disabled={rolesLoading}
                 >
-                  <option value="User">User</option>
-                  <option value="Admin">Admin</option>
+                  {rolesLoading ? (
+                    <option value="">กำลังโหลด...</option>
+                  ) : (
+                    roles.map((role) => (
+                      <option key={role.id} value={role.name}>
+                        {role.name}
+                      </option>
+                    ))
+                  )}
                 </select>
                 {formErrors.role && (
                   <p className="mt-1 text-sm text-red-600">{formErrors.role}</p>

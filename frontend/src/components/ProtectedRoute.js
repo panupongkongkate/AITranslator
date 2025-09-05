@@ -24,7 +24,7 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
   }
 
   // Check role-based access
-  if (requiredRole && user?.role !== requiredRole) {
+  if (requiredRole && user?.role?.name !== requiredRole) {
     return <Navigate to="/dashboard" replace />;
   }
 

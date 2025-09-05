@@ -37,7 +37,7 @@ const AppContent = () => {
           path="/login" 
           element={
             isAuthenticated ? 
-            <Navigate to="/dashboard" replace /> : 
+            <Navigate to="/" replace /> : 
             <LoginPage />
           } 
         />

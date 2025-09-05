@@ -39,7 +39,7 @@ const DashboardPage = () => {
       color: 'from-green-500 to-green-600',
       hoverColor: 'from-green-600 to-green-700'
     },
-    ...(user?.role === 'Admin' ? [{
+    ...(user?.role?.name === 'Admin' ? [{
       name: 'จัดการผู้ใช้',
       description: 'ดูแลระบบผู้ใช้งาน',
       href: '/admin',
@@ -57,7 +57,7 @@ const DashboardPage = () => {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
-            {user?.role === 'Admin' ? (
+            {user?.role?.name === 'Admin' ? (
               <Crown className="w-10 h-10 text-yellow-600" />
             ) : (
               <UserCircle className="w-10 h-10 text-gray-600" />
@@ -67,7 +67,7 @@ const DashboardPage = () => {
                 ยินดีต้อนรับ, {user?.username}
               </h1>
               <p className="text-gray-600">
-                {user?.role === 'Admin' ? 'ผู้ดูแลระบบ' : 'ผู้ใช้งาน'} • {new Date().toLocaleDateString('th-TH', {
+                {user?.role?.name === 'Admin' ? 'ผู้ดูแลระบบ' : 'ผู้ใช้งาน'} • {new Date().toLocaleDateString('th-TH', {
                   weekday: 'long',
                   year: 'numeric',
                   month: 'long',

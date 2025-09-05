@@ -34,7 +34,7 @@ const Navigation = () => {
 
   const navigation = [
     { name: 'แปลภาษา', href: '/', icon: Languages },
-    ...(user?.role === 'Admin' ? [
+    ...(user?.role?.name === 'Admin' ? [
       { name: 'จัดการผู้ใช้', href: '/admin', icon: Users }
     ] : []),
   ];
@@ -92,7 +92,7 @@ const Navigation = () => {
                   className="flex items-center space-x-3 text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 p-2 hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex items-center space-x-2">
-                    {user?.role === 'Admin' ? (
+                    {user?.role?.name === 'Admin' ? (
                       <Crown className="w-5 h-5 text-yellow-600" />
                     ) : (
                       <UserCircle className="w-5 h-5 text-gray-600" />
@@ -109,12 +109,12 @@ const Navigation = () => {
                       <div className="px-4 py-2 border-b border-gray-100">
                         <p className="text-sm text-gray-500">เข้าสู่ระบบในฐานะ</p>
                         <p className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                          {user?.role === 'Admin' ? (
+                          {user?.role?.name === 'Admin' ? (
                             <Crown className="w-4 h-4 text-yellow-600" />
                           ) : (
                             <UserCircle className="w-4 h-4 text-gray-600" />
                           )}
-                          {user?.username} ({user?.role})
+                          {user?.username} ({user?.role?.name || user?.role})
                         </p>
                       </div>
                       
@@ -184,14 +184,14 @@ const Navigation = () => {
             
             <div className="pt-4 pb-3 border-t border-gray-200 mt-3">
               <div className="flex items-center px-3 mb-3">
-                {user?.role === 'Admin' ? (
+                {user?.role?.name === 'Admin' ? (
                   <Crown className="w-6 h-6 text-yellow-600 mr-3" />
                 ) : (
                   <UserCircle className="w-6 h-6 text-gray-600 mr-3" />
                 )}
                 <div>
                   <div className="text-base font-medium text-gray-800">{user?.username}</div>
-                  <div className="text-sm text-gray-500">{user?.role}</div>
+                  <div className="text-sm text-gray-500">{user?.role?.name || user?.role}</div>
                 </div>
               </div>
               

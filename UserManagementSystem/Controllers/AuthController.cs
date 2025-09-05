@@ -35,12 +35,17 @@ namespace UserManagementAPI.Controllers
                 }
 
                 var token = _authService.GenerateJwtToken(user);
-                var response = new AuthResponse
+                var response = new
                 {
                     Id = user.Id,
                     Username = user.Username,
                     Email = user.Email,
-                    Role = user.Role,
+                    Role = new 
+                    {
+                        Id = user.Role.Id,
+                        Name = user.Role.Name,
+                        Description = user.Role.Description
+                    },
                     Token = token,
                     ExpiresAt = DateTime.UtcNow.AddHours(24)
                 };
@@ -67,9 +72,9 @@ namespace UserManagementAPI.Controllers
 
                 // Only allow Admin role registration by existing Admins
                 // For now, allow any role for demo purposes
-                if (string.IsNullOrEmpty(request.Role))
+                if (request.RoleId == 0)
                 {
-                    request.Role = "User";
+                    request.RoleId = 2; // Default to User role
                 }
 
                 var user = await _authService.RegisterAsync(request);
@@ -79,12 +84,17 @@ namespace UserManagementAPI.Controllers
                 }
                 var token = _authService.GenerateJwtToken(user);
 
-                var response = new AuthResponse
+                var response = new
                 {
                     Id = user.Id,
                     Username = user.Username,
                     Email = user.Email,
-                    Role = user.Role,
+                    Role = new 
+                    {
+                        Id = user.Role.Id,
+                        Name = user.Role.Name,
+                        Description = user.Role.Description
+                    },
                     Token = token,
                     ExpiresAt = DateTime.UtcNow.AddHours(24)
                 };

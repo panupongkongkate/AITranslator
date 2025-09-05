@@ -20,8 +20,10 @@ namespace UserManagementAPI.Models
         public string Password { get; set; } = string.Empty;
 
         [Required]
-        [StringLength(20)]
-        public string Role { get; set; } = "User"; // Default role is "User", can be "Admin"
+        public int RoleId { get; set; }
+
+        // Navigation property
+        public Role Role { get; set; } = null!;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

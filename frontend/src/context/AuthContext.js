@@ -47,6 +47,12 @@ const authReducer = (state, action) => {
         ...state,
         error: null,
       };
+    case 'AUTH_STOP':
+      return {
+        ...state,
+        isLoading: false,
+        error: null,
+      };
     case 'SET_USER':
       return {
         ...state,
@@ -162,16 +168,10 @@ export const AuthProvider = ({ children }) => {
         Role: role,
       });
 
-      const { token, user } = response.data;
-
-      localStorage.setItem('token', token);
+      // Don't auto-login after registration, just return success and stop loading
+      dispatch({ type: 'AUTH_STOP' });
       
-      dispatch({
-        type: 'AUTH_SUCCESS',
-        payload: { user, token },
-      });
-
-      return { success: true };
+      return { success: true, message: 'Registration successful! Please login to continue.' };
     } catch (error) {
       const errorMessage = error.response?.data?.message || 'Registration failed';
       dispatch({
